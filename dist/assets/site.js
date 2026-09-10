@@ -111,6 +111,16 @@ galleries.forEach((gallery) => {
     const dot = document.createElement('button');
     dot.type = 'button';
     dot.setAttribute('aria-label', String(index + 1));
+    if (gallery.classList.contains('media-gallery-colors')) {
+      const source = slide.querySelector('img');
+      if (source) {
+        const thumbnail = document.createElement('img');
+        thumbnail.src = source.getAttribute('src');
+        thumbnail.alt = '';
+        thumbnail.loading = 'lazy';
+        dot.append(thumbnail);
+      }
+    }
     dot.addEventListener('click', () => show(index));
     dots.append(dot);
     return dot;
@@ -121,6 +131,10 @@ galleries.forEach((gallery) => {
     slides.forEach((slide, slideIndex) => slide.setAttribute('aria-hidden', String(slideIndex !== current)));
     dotButtons.forEach((dot, dotIndex) => dot.setAttribute('aria-current', String(dotIndex === current)));
     if (status) status.textContent = `${current + 1} / ${slides.length}`;
+    if (gallery.classList.contains('media-gallery-colors')) {
+      const activeDot = dotButtons[current];
+      dots.scrollTo({ left: activeDot.offsetLeft - (dots.clientWidth - activeDot.offsetWidth) / 2, behavior: reduceMotion.matches ? 'auto' : 'smooth' });
+    }
   };
 
   const show = (index, behavior = 'smooth') => {
