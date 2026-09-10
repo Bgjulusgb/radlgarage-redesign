@@ -23,7 +23,11 @@ if (document.readyState === 'complete') {
 }
 
 if (header) {
-  const updateHeader = () => header.classList.toggle('is-scrolled', window.scrollY > 24);
+  const toTop = document.querySelector('[data-to-top]');
+  const updateHeader = () => {
+    header.classList.toggle('is-scrolled', window.scrollY > 24);
+    if (toTop) toTop.classList.toggle('is-visible', window.scrollY > window.innerHeight);
+  };
   updateHeader();
   window.addEventListener('scroll', updateHeader, { passive: true });
 }
@@ -83,6 +87,105 @@ if (brandDirectory) {
   if (window.location.hash) openBrandFromHash();
   window.addEventListener('hashchange', openBrandFromHash);
 }
+
+const galleries = [...document.querySelectorAll('[data-gallery]')];
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+galleries.forEach((gallery) => {
+  const viewport = gallery.querySelector('[data-gallery-viewport]');
+  const slides = [...gallery.querySelectorAll('.gallery-slide')];
+  const previous = gallery.querySelector('[data-gallery-prev]');
+  const next = gallery.querySelector('[data-gallery-next]');
+  const dots = gallery.querySelector('[data-gallery-dots]');
+  const status = gallery.querySelector('[data-gallery-status]');
+
+  if (!viewport || slides.length < 2 || !previous || !next || !dots) return;
+
+  let current = 0;
+  let scrollFrame = 0;
+  let timer = 0;
+  let visible = false;
+  let paused = false;
+
+  const dotButtons = slides.map((slide, index) => {
+    const dot = document.createElement('button');
+    dot.type = 'button';
+    dot.setAttribute('aria-label', String(index + 1));
+    dot.addEventListener('click', () => show(index));
+    dots.append(dot);
+    return dot;
+  });
+
+  const update = (index) => {
+    current = (index + slides.length) % slides.length;
+    slides.forEach((slide, slideIndex) => slide.setAttribute('aria-hidden', String(slideIndex !== current)));
+    dotButtons.forEach((dot, dotIndex) => dot.setAttribute('aria-current', String(dotIndex === current)));
+    if (status) status.textContent = `${current + 1} / ${slides.length}`;
+  };
+
+  const show = (index, behavior = 'smooth') => {
+    const nextIndex = (index + slides.length) % slides.length;
+    update(nextIndex);
+    viewport.scrollTo({ left: slides[nextIndex].offsetLeft, behavior: reduceMotion.matches ? 'auto' : behavior });
+  };
+
+  const stop = () => {
+    window.clearInterval(timer);
+    timer = 0;
+  };
+
+  const start = () => {
+    stop();
+    if (!visible || paused || reduceMotion.matches || document.hidden) return;
+    timer = window.setInterval(() => show(current + 1), 7000);
+  };
+
+  previous.addEventListener('click', () => { show(current - 1); start(); });
+  next.addEventListener('click', () => { show(current + 1); start(); });
+  viewport.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    show(current + (event.key === 'ArrowRight' ? 1 : -1));
+    start();
+  });
+  viewport.addEventListener('scroll', () => {
+    window.cancelAnimationFrame(scrollFrame);
+    scrollFrame = window.requestAnimationFrame(() => {
+      const closest = slides.reduce((best, slide, index) => Math.abs(slide.offsetLeft - viewport.scrollLeft) < Math.abs(slides[best].offsetLeft - viewport.scrollLeft) ? index : best, 0);
+      if (closest !== current) update(closest);
+    });
+  }, { passive: true });
+
+  gallery.addEventListener('mouseenter', () => { paused = true; stop(); });
+  gallery.addEventListener('mouseleave', () => { paused = false; start(); });
+  gallery.addEventListener('focusin', () => { paused = true; stop(); });
+  gallery.addEventListener('focusout', (event) => {
+    if (gallery.contains(event.relatedTarget)) return;
+    paused = false;
+    start();
+  });
+  gallery.addEventListener('touchstart', () => { paused = true; stop(); }, { passive: true });
+  gallery.addEventListener('touchend', () => { paused = false; start(); }, { passive: true });
+  document.addEventListener('visibilitychange', start);
+  reduceMotion.addEventListener?.('change', start);
+
+  if ('ResizeObserver' in window) {
+    new ResizeObserver(() => viewport.scrollTo({ left: slides[current].offsetLeft, behavior: 'auto' })).observe(viewport);
+  }
+
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      start();
+    }, { threshold: .55 }).observe(gallery);
+  } else {
+    visible = true;
+    start();
+  }
+
+  update(0);
+  gallery.classList.add('is-active');
+});
 
 const revealTargets = document.querySelectorAll([
   '.bulletin',
