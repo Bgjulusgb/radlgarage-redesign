@@ -38,6 +38,7 @@ function Build-LegalPage([string]$slug, [string]$title) {
   <script src="../assets/site.js" defer></script>
 </head>
 <body>
+  <div class="site-loader" aria-hidden="true"><img src="../assets/Radlgarage_Fahrradladen-Muenchen-Shop-Service_2x.png" alt=""><span></span></div>
   <a class="skip-link" href="#inhalt">$title</a>
   <header class="site-header inner-header" data-header>
     <a class="brand" href="../" aria-label="Radlgarage"><img src="../assets/Radlgarage_Fahrradladen-Muenchen-Shop-Service_2x.png" alt="Radlgarage"></a>
